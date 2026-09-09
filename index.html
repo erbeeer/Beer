@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ER BeeeR 🍺</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent: #f59e0b;
+            --text: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 80px;
+            direction: rtl;
+        }
+
+        h1, h2, h3 { text-align: center; color: var(--accent); margin-top: 10px; }
+        .container { max-width: 500px; margin: 0 auto; }
+
+        .group-card {
+            background: #252525;
+            border: 1px solid var(--accent);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn {
+            flex: 1; padding: 10px; background-color: var(--card-bg);
+            color: var(--text-secondary); border: 1px solid #333;
+            border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+        .tab-btn.active { background-color: var(--accent); color: #000; border-color: var(--accent); }
+
+        .card {
+            background-color: var(--card-bg); padding: 15px;
+            border-radius: 12px; margin-bottom: 20px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+
+        .daily-summary {
+            background: linear-gradient(135deg, #d97706, #78350f);
+            border-radius: 16px; padding: 15px; text-align: center; margin-bottom: 20px;
+        }
+        .daily-summary h3 { margin: 0; color: #fff; }
+        .daily-summary .count { font-size: 3rem; font-weight: bold; margin: 5px 0; }
+
+        .stock-summary {
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 16px; padding: 15px; text-align: center; margin-bottom: 20px;
+        }
+        .stock-summary h3 { margin: 0; color: var(--text-secondary); font-size: 1.1rem; }
+        .stock-summary .count { font-size: 2.8rem; font-weight: bold; color: var(--accent); margin: 5px 0; }
+
+        input, select {
+            background-color: #2a2a2a; border: 1px solid #333;
+            color: #fff; padding: 12px; border-radius: 8px;
+            font-size: 1rem; width: 100%; box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--accent); color: #000; border: none;
+            padding: 12px; border-radius: 8px; font-weight: bold;
+            font-size: 1rem; cursor: pointer;
+        }
+        button:active { transform: scale(0.98); }
+
+        .beer-card {
+            background-color: var(--card-bg); border-radius: 12px;
+            padding: 15px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .beer-info h4 { margin: 0 0 5px 0; font-size: 1.2rem; }
+        .beer-info p { margin: 0; color: var(--text-secondary); font-size: 0.9rem; }
+        .stock-tag { font-weight: bold; color: var(--accent); }
+
+        .beer-actions { display: flex; gap: 8px; align-items: center; }
+        .btn-open { background-color: var(--success); color: white; padding: 10px 15px; }
+        .btn-danger { background-color: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 6px 10px; }
+        .btn-add-stock { background-color: #3b82f6; color: white; padding: 8px 12px; }
+
+        .status-msg { font-size: 0.85rem; text-align: center; color: var(--accent); margin-top: 8px; font-weight: bold; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .report-table th, .report-table td { padding: 10px; text-align: right; border-bottom: 1px solid #333; }
+        .report-table th { color: var(--accent); }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body onclick="unlockAudio()">
+
+<div class="container">
+    <h1>🍺 ER BeeeR 🍺</h1>
+
+    <div class="group-card">
+        <label style="display:block; margin-bottom: 5px; font-weight:bold;">קוד קבוצה משותף:</label>
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="groupCode" placeholder="הזן שם קבוצה (למשל: beer123)">
+            <button onclick="connectGroup()" style="width: 110px;">התחבר</button>
+        </div>
+        <div id="statusMsg" class="status-msg">הזן קוד משותף בשני המכשירים להתחברות</div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" id="tabMainBtn" onclick="switchTab('main')">מלאי</button>
+        <button class="tab-btn" id="tabReportBtn" onclick="switchTab('reports')">דוחות</button>
+    </div>
+
+    <div id="mainView">
+        <div class="daily-summary">
+            <h3>נפתחו היום</h3>
+            <div class="count" id="dailyCount">0</div>
+        </div>
+
+        <div class="stock-summary">
+            <h3>בירות במלאי</h3>
+            <div class="count" id="totalStockCount">0</div>
+        </div>
+
+        <h2>המלאי הנוכחי</h2>
+        <div id="beerList"></div>
+
+        <div class="card">
+            <h2>הוספת סוג בירה חדש</h2>
+            <input type="text" id="beerName" placeholder="שם הבירה">
+            <input type="number" id="beerStock" placeholder="כמות התחלתית">
+            <button onclick="addBeer()">הוסף סוג בירה</button>
+        </div>
+    </div>
+
+    <div id="reportsView" class="hidden">
+        <div class="card">
+            <h2>סינון דוח</h2>
+            <select id="reportPeriod" onchange="generateReport()">
+                <option value="week">השבוע האחרון</option>
+                <option value="month">החודש האחרון</option>
+                <option value="all">כל הזמנים</option>
+            </select>
+        </div>
+
+        <div class="card">
+            <h3>סיכום לפי סוג בירה</h3>
+            <div id="typeReport"></div>
+        </div>
+
+        <div class="card">
+            <h3>יומן פתיחות</h3>
+            <div style="overflow-x:auto;">
+                <table class="report-table">
+                    <thead>
+                        <tr><th>תאריך ושעה</th><th>שם הבירה</th></tr>
+                    </thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ניקוי זיכרון מטמון ישן שנשמר בדפדפן
+    localStorage.removeItem('beer_sound_base64');
+
+    const FIREBASE_URL = "https://beer-ff03f-default-rtdb.firebaseio.com";
+
+    let beers = [];
+    let openLogs = [];
+    let currentGroup = localStorage.getItem('beer_firebase_group') || '';
+    let syncTimer = null;
+    let audioCtx = null;
+
+    function unlockAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playPopSound() {
+        unlockAudio();
+        try {
+            const now = audioCtx.currentTime;
+
+            // 1. פתיחת פקק
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(850, now);
+            osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+            oscGain.gain.setValueAtTime(1, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+            osc.connect(oscGain);
+            oscGain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.08);
+
+            // 2. תסיסה וגזים
+            const bufferSize = audioCtx.sampleRate * 0.3;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(3000, now);
+            filter.Q.setValueAtTime(2, now);
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0, now);
+            noiseGain.gain.setValueAtTime(0.5, now + 0.01);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+            whiteNoise.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+
+            whiteNoise.start(now + 0.01);
+            whiteNoise.stop(now + 0.3);
+        } catch (e) {
+            console.error("Audio error:", e);
+        }
+    }
+
+    if (currentGroup) {
+        document.getElementById('groupCode').value = currentGroup;
+        connectGroup();
+    }
+
+    function showStatus(msg) {
+        document.getElementById('statusMsg').innerHTML = msg;
+    }
+
+    async function connectGroup() {
+        const input = document.getElementById('groupCode').value.trim();
+        const cleanCode = input.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        if (!cleanCode) {
+            alert('אנא הזן קוד קבוצה באנגלית או במספרים בלבד');
+            return;
+        }
+
+        currentGroup = cleanCode;
+        localStorage.setItem('beer_firebase_group', currentGroup);
+        showStatus('⏳ מתחבר לענן...');
+
+        await fetchFromCloud();
+
+        if (syncTimer) clearInterval(syncTimer);
+        syncTimer = setInterval(fetchFromCloud, 2500);
+    }
+
+    async function fetchFromCloud() {
+        if (!currentGroup) return;
+
+        try {
+            const res = await fetch(`${FIREBASE_URL}/groups/${currentGroup}.json`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data) {
+                    beers = data.beers || [];
+                    openLogs = data.openLogs || [];
+                } else {
+                    beers = beers || [];
+                    openLogs = openLogs || [];
+                }
+                render();
+                showStatus(`🟢 מחובר ומסונכרן בלייב: <b>${currentGroup}</b>`);
+            }
+        } catch (e) {
+            console.error('Firebase Fetch Error:', e);
+            showStatus('⚠️ בדיקת חיבור לרשת...');
+        }
+    }
+
+    async function syncToCloud() {
+        if (!currentGroup) return;
+
+        const payload = { beers, openLogs };
+        render();
+
+        try {
+            await fetch(`${FIREBASE_URL}/groups/${currentGroup}.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            showStatus(`🟢 מסונכרן בלייב: <b>${currentGroup}</b>`);
+        } catch (e) {
+            console.error('Firebase Save Error:', e);
+        }
+    }
+
+    function switchTab(tab) {
+        document.getElementById('mainView').classList.toggle('hidden', tab !== 'main');
+        document.getElementById('reportsView').classList.toggle('hidden', tab !== 'reports');
+        document.getElementById('tabMainBtn').classList.toggle('active', tab === 'main');
+        document.getElementById('tabReportBtn').classList.toggle('active', tab === 'reports');
+        if (tab === 'reports') generateReport();
+    }
+
+    async function addBeer() {
+        if (!currentGroup) { alert('יש להתחבר לקבוצה תחילה!'); return; }
+        const name = document.getElementById('beerName').value.trim();
+        const stock = parseInt(document.getElementById('beerStock').value);
+        if (!name || isNaN(stock)) return alert('נא למלא שם וכמות תקינים');
+
+        beers.push({ id: Date.now(), name, stock });
+        document.getElementById('beerName').value = '';
+        document.getElementById('beerStock').value = '';
+        await syncToCloud();
+    }
+
+    async function openBeer(id) {
+        const beer = beers.find(b => b.id === id);
+        if (beer && beer.stock > 0) {
+            playPopSound();
+            beer.stock--;
+            openLogs.push({ id: Date.now(), beerName: beer.name, timestamp: new Date().toISOString() });
+            await syncToCloud();
+        } else {
+            alert('נגמר המלאי!');
+        }
+    }
+
+    async function addStock(id) {
+        const amount = parseInt(prompt('כמה להוסיף?'));
+        if (!isNaN(amount) && amount > 0) {
+            const beer = beers.find(b => b.id === id);
+            if (beer) { 
+                beer.stock += amount; 
+                await syncToCloud(); 
+            }
+        }
+    }
+
+    async function deleteBeer(id) {
+        if (confirm('למחוק בירה זו?')) {
+            beers = beers.filter(b => b.id !== id);
+            await syncToCloud();
+        }
+    }
+
+    function render() {
+        const todayStr = new Date().toDateString();
+        const todayCount = openLogs.filter(l => new Date(l.timestamp).toDateString() === todayStr).length;
+        document.getElementById('dailyCount').innerText = todayCount;
+
+        const totalStock = beers.reduce((sum, b) => sum + (parseInt(b.stock) || 0), 0);
+        document.getElementById('totalStockCount').innerText = totalStock;
+
+        const listContainer = document.getElementById('beerList');
+        listContainer.innerHTML = beers.length ? '' : '<p style="text-align:center; color: var(--text-secondary);">אין בירות במלאי. הוסף בירה למטה!</p>';
+
+        beers.forEach(beer => {
+            const card = document.createElement('div');
+            card.className = 'beer-card';
+            card.innerHTML = `
+                <div class="beer-info">
+                    <h4>${beer.name}</h4>
+                    <p>במלאי: <span class="stock-tag">${beer.stock}</span></p>
+                </div>
+                <div class="beer-actions">
+                    <button class="btn-open" onclick="openBeer(${beer.id})">🍺 פתח</button>
+                    <button class="btn-add-stock" onclick="addStock(${beer.id})">+</button>
+                    <button class="btn-danger" onclick="deleteBeer(${beer.id})">🗑️</button>
+                </div>
+            `;
+            listContainer.appendChild(card);
+        });
+    }
+
+    function generateReport() {
+        const period = document.getElementById('reportPeriod').value;
+        const now = new Date();
+        let minDate = new Date(0);
+
+        if (period === 'week') minDate = new Date(now.setDate(now.getDate() - 7));
+        else if (period === 'month') minDate = new Date(now.setDate(now.getDate() - 30));
+
+        const filtered = openLogs.filter(l => new Date(l.timestamp) >= minDate);
+
+        const typeCounts = {};
+        filtered.forEach(l => typeCounts[l.beerName] = (typeCounts[l.beerName] || 0) + 1);
+
+        let typeHtml = '<ul>';
+        for (const [name, count] of Object.entries(typeCounts)) {
+            typeHtml += `<li><b>${name}:</b> ${count} שנפתחו</li>`;
+        }
+        document.getElementById('typeReport').innerHTML = typeHtml + '</ul>';
+
+        const tableBody = document.getElementById('logTableBody');
+        tableBody.innerHTML = '';
+        [...filtered].reverse().forEach(log => {
+            const d = new Date(log.timestamp);
+            tableBody.innerHTML += `<tr><td>${d.toLocaleDateString('he-IL')} ${d.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</td><td><b>${log.beerName}</b></td></tr>`;
+        });
+    }
+</script>
+
+</body>
+</html>
