@@ -176,24 +176,23 @@
 <script>
     const FIREBASE_URL = "https://beer-ff03f-default-rtdb.firebaseio.com";
     
-    // קובץ השמע החדש מומע כ-Base64
-    const SOUND_EFFECT = "data:audio/mp3;base64,SUQ3BAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//5AwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAInfoAALvAAAAAAAAAAA3c3N3dzf3d/M3Mz39////7g/1///4f2aO6IqgP3o///389+oAABcBAAAB8AAH4P/8/3+eAgAD+B/P+f+//7/8/3//B4BA4A/4P+f8///2f/6n4I4Hg/3/P//";
+    // קובץ שמע באיכות גבוהה של פתיחת בירה
+    const REAL_BEER_SOUND = "https://assets.mixkit.co/active_storage/sfx/2070/2070-preview.mp3";
 
     let beers = [];
     let openLogs = [];
     let currentGroup = localStorage.getItem('beer_firebase_group') || '';
     let syncTimer = null;
-    let beerAudio = new Audio(SOUND_EFFECT);
+    let beerAudio = new Audio(REAL_BEER_SOUND);
 
     function unlockAudio() {
-        // טעינה ראשונית של האודיו למניעת חסימות בדפדפנים במובייל
         beerAudio.load();
     }
 
     function playPopSound() {
         try {
             beerAudio.currentTime = 0;
-            beerAudio.play().catch(e => console.log('Audio playback status:', e));
+            beerAudio.play().catch(e => console.log('Audio error:', e));
         } catch (e) {
             console.error("Audio error:", e);
         }
