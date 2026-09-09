@@ -103,7 +103,7 @@
         .hidden { display: none; }
     </style>
 </head>
-<body onclick="unlockAudio()">
+<body onclick="unlockAudio()" ontouchstart="unlockAudio()">
 
 <div class="container">
     <h1>🍺 ER BeeeR 🍺</h1>
@@ -175,26 +175,75 @@
 
 <script>
     const FIREBASE_URL = "https://beer-ff03f-default-rtdb.firebaseio.com";
-    
-    // קובץ שמע באיכות גבוהה של פתיחת בירה
-    const REAL_BEER_SOUND = "https://assets.mixkit.co/active_storage/sfx/2070/2070-preview.mp3";
 
     let beers = [];
     let openLogs = [];
     let currentGroup = localStorage.getItem('beer_firebase_group') || '';
     let syncTimer = null;
-    let beerAudio = new Audio(REAL_BEER_SOUND);
+    let audioCtx = null;
 
+    // שחרור נעילת השמע בסמארטפונים
     function unlockAudio() {
-        beerAudio.load();
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
     }
 
+    // יצירת צליל פתיחת בקבוק בירה ריאליסטי ישירות בקוד
     function playPopSound() {
+        unlockAudio();
+        if (!audioCtx) return;
+
         try {
-            beerAudio.currentTime = 0;
-            beerAudio.play().catch(e => console.log('Audio error:', e));
+            const now = audioCtx.currentTime;
+
+            // 1. פתיחת פקק - מכה מתכתית קצרה וחדה (Pop)
+            const popOsc = audioCtx.createOscillator();
+            const popGain = audioCtx.createGain();
+            popOsc.type = 'sine';
+            popOsc.frequency.setValueAtTime(1200, now);
+            popOsc.frequency.exponentialRampToValueAtTime(180, now + 0.05);
+
+            popGain.gain.setValueAtTime(1, now);
+            popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+            popOsc.connect(popGain);
+            popGain.connect(audioCtx.destination);
+            popOsc.start(now);
+            popOsc.stop(now + 0.05);
+
+            // 2. שחרור גזים ותסיסה (Fizz/Pssss)
+            const bufferSize = audioCtx.sampleRate * 0.25;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(3500, now);
+            filter.Q.setValueAtTime(3, now);
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0, now);
+            noiseGain.gain.setValueAtTime(0.4, now + 0.005);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+            noise.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+
+            noise.start(now + 0.005);
+            noise.stop(now + 0.25);
         } catch (e) {
-            console.error("Audio error:", e);
+            console.error("Audio Play Error:", e);
         }
     }
 
