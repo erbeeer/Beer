@@ -174,72 +174,26 @@
 </div>
 
 <script>
-    // ניקוי זיכרון מטמון ישן שנשמר בדפדפן
-    localStorage.removeItem('beer_sound_base64');
-
     const FIREBASE_URL = "https://beer-ff03f-default-rtdb.firebaseio.com";
+    
+    // קובץ השמע החדש מומע כ-Base64
+    const SOUND_EFFECT = "data:audio/mp3;base64,SUQ3BAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//5AwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAInfoAALvAAAAAAAAAAA3c3N3dzf3d/M3Mz39////7g/1///4f2aO6IqgP3o///389+oAABcBAAAB8AAH4P/8/3+eAgAD+B/P+f+//7/8/3//B4BA4A/4P+f8///2f/6n4I4Hg/3/P//";
 
     let beers = [];
     let openLogs = [];
     let currentGroup = localStorage.getItem('beer_firebase_group') || '';
     let syncTimer = null;
-    let audioCtx = null;
+    let beerAudio = new Audio(SOUND_EFFECT);
 
     function unlockAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+        // טעינה ראשונית של האודיו למניעת חסימות בדפדפנים במובייל
+        beerAudio.load();
     }
 
     function playPopSound() {
-        unlockAudio();
         try {
-            const now = audioCtx.currentTime;
-
-            // 1. פתיחת פקק
-            const osc = audioCtx.createOscillator();
-            const oscGain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(850, now);
-            osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
-            oscGain.gain.setValueAtTime(1, now);
-            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-
-            osc.connect(oscGain);
-            oscGain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.08);
-
-            // 2. תסיסה וגזים
-            const bufferSize = audioCtx.sampleRate * 0.3;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const output = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                output[i] = Math.random() * 2 - 1;
-            }
-
-            const whiteNoise = audioCtx.createBufferSource();
-            whiteNoise.buffer = buffer;
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.setValueAtTime(3000, now);
-            filter.Q.setValueAtTime(2, now);
-
-            const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0, now);
-            noiseGain.gain.setValueAtTime(0.5, now + 0.01);
-            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-
-            whiteNoise.connect(filter);
-            filter.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-
-            whiteNoise.start(now + 0.01);
-            whiteNoise.stop(now + 0.3);
+            beerAudio.currentTime = 0;
+            beerAudio.play().catch(e => console.log('Audio playback status:', e));
         } catch (e) {
             console.error("Audio error:", e);
         }
