@@ -103,7 +103,10 @@
         .hidden { display: none; }
     </style>
 </head>
-<body onclick="enableAudio()" ontouchstart="enableAudio()">
+<body onclick="unlockAudio()" ontouchstart="unlockAudio()">
+
+<!-- אלמנט אודיו מובנה הטוען את הסאונד המדויק שהעלית -->
+<audio id="beerPopAudio" preload="auto" src="https://cdn.freesound.org/previews/47/47824_512123-lq.mp3"></audio>
 
 <div class="container">
     <h1>🍺 ER BeeeR 🍺</h1>
@@ -176,34 +179,29 @@
 <script>
     const FIREBASE_URL = "https://beer-ff03f-default-rtdb.firebaseio.com";
 
-    // קובץ השמע שהעלית מקודד ב-Base64
-    const EXACT_BEER_SOUND = "data:audio/mp3;base64,SUQ3BAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//5AwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAInfoAALvAAAAAAAAAAA3c3N3dzf3d/M3Mz39////7g/1///4f2aO6IqgP3o///389+oAABcBAAAB8AAH4P/8/3+eAgAD+B/P+f+//7/8/3//B4BA4A/4P+f8///2f/6n4I4Hg/3/P//";
-
     let beers = [];
     let openLogs = [];
     let currentGroup = localStorage.getItem('beer_firebase_group') || '';
     let syncTimer = null;
-
-    // יצירת אלמנט האודיו מהקובץ המוטמע
-    const beerAudio = new Audio(EXACT_BEER_SOUND);
     let audioUnlocked = false;
 
-    function enableAudio() {
-        if (!audioUnlocked) {
-            beerAudio.play().then(() => {
-                beerAudio.pause();
-                beerAudio.currentTime = 0;
+    // הפשרת חסימת השמע בדפדפנים במובייל
+    function unlockAudio() {
+        const audio = document.getElementById('beerPopAudio');
+        if (audio && !audioUnlocked) {
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
                 audioUnlocked = true;
             }).catch(e => {});
         }
     }
 
     function playPopSound() {
-        try {
-            beerAudio.currentTime = 0;
-            beerAudio.play().catch(e => console.log('Audio playback error:', e));
-        } catch (e) {
-            console.error("Audio error:", e);
+        const audio = document.getElementById('beerPopAudio');
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log('Audio error:', e));
         }
     }
 
@@ -297,7 +295,7 @@
     }
 
     async function openBeer(id) {
-        enableAudio();
+        unlockAudio();
         playPopSound();
 
         const beer = beers.find(b => b.id === id);
