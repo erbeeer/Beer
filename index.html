@@ -157,7 +157,7 @@
             <div id="dailyReportResults" style="margin-top: 15px;"></div>
         </div>
 
-        <!-- 2. סינון תקופתי כללי -->
+        <!-- 2. סיכום תקופתי עם סה"כ -->
         <div class="card">
             <h2>סיכום תקופתי</h2>
             <select id="reportPeriod" onchange="generatePeriodReport()">
@@ -165,7 +165,7 @@
                 <option value="month">החודש האחרון</option>
                 <option value="all">כל הזמנים</option>
             </select>
-            <div id="typeReport" style="margin-top: 10px;"></div>
+            <div id="typeReport" style="margin-top: 15px;"></div>
         </div>
 
         <!-- 3. יומן פתיחות שנפתח רק בלחיצה -->
@@ -302,9 +302,7 @@
         document.getElementById('tabMainBtn').classList.toggle('active', tab === 'main');
         document.getElementById('tabReportBtn').classList.toggle('active', tab === 'reports');
         if (tab === 'reports') {
-            // הגדרת תאריך היום כברירת מחדל בדוח היומי
             if (!document.getElementById('reportDate').value) {
-                document.getElementById('reportDate').valueToDate = new Date();
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('reportDate').value = today;
             }
@@ -386,7 +384,6 @@
         });
     }
 
-    // 1. הפקת דוח יומי לפי תאריך נבחר
     function generateDailyReport() {
         const selectedDateVal = document.getElementById('reportDate').value;
         const resultsDiv = document.getElementById('dailyReportResults');
@@ -417,7 +414,7 @@
         resultsDiv.innerHTML = html;
     }
 
-    // 2. הפקת דוח תקופתי
+    // הפקת דוח תקופתי הכולל סה"כ
     function generatePeriodReport() {
         const period = document.getElementById('reportPeriod').value;
         const now = new Date();
@@ -428,17 +425,21 @@
 
         const filtered = openLogs.filter(l => new Date(l.timestamp) >= minDate);
 
+        if (filtered.length === 0) {
+            document.getElementById('typeReport').innerHTML = '<p style="color: var(--text-secondary);">אין נתונים לתקופה זו</p>';
+            return;
+        }
+
         const typeCounts = {};
         filtered.forEach(l => typeCounts[l.beerName] = (typeCounts[l.beerName] || 0) + 1);
 
-        let typeHtml = '<ul>';
+        let typeHtml = `<h3 style="color: var(--accent); margin-bottom:10px;">סה"כ בתקופה זו: ${filtered.length} בירות</h3><ul>`;
         for (const [name, count] of Object.entries(typeCounts)) {
             typeHtml += `<li><b>${name}:</b> ${count} שנפתחו</li>`;
         }
         document.getElementById('typeReport').innerHTML = typeHtml + '</ul>';
     }
 
-    // 3. פתיחה/סגירה של יומן הפתיחות
     function toggleLogView() {
         const container = document.getElementById('logContainer');
         container.classList.toggle('hidden');
