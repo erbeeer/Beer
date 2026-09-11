@@ -100,10 +100,15 @@
         .report-table th, .report-table td { padding: 10px; text-align: right; border-bottom: 1px solid #333; }
         .report-table th { color: var(--accent); }
 
+        .btn-toggle-log {
+            background-color: #333; color: var(--accent); border: 1px solid var(--accent);
+            width: 100%; margin-top: 10px;
+        }
+
         .hidden { display: none; }
     </style>
 </head>
-<body onclick="unlockAudio()" ontouchstart="unlockAudio()">
+<body>
 
 <div class="container">
     <h1>🍺 ER BeeeR 🍺</h1>
@@ -145,23 +150,28 @@
     </div>
 
     <div id="reportsView" class="hidden">
+        <!-- 1. דוח יומי לפי תאריך -->
         <div class="card">
-            <h2>סינון דוח</h2>
-            <select id="reportPeriod" onchange="generateReport()">
+            <h2>דוח יומי לפי תאריך</h2>
+            <input type="date" id="reportDate" onchange="generateDailyReport()">
+            <div id="dailyReportResults" style="margin-top: 15px;"></div>
+        </div>
+
+        <!-- 2. סינון תקופתי כללי -->
+        <div class="card">
+            <h2>סיכום תקופתי</h2>
+            <select id="reportPeriod" onchange="generatePeriodReport()">
                 <option value="week">השבוע האחרון</option>
                 <option value="month">החודש האחרון</option>
                 <option value="all">כל הזמנים</option>
             </select>
+            <div id="typeReport" style="margin-top: 10px;"></div>
         </div>
 
+        <!-- 3. יומן פתיחות שנפתח רק בלחיצה -->
         <div class="card">
-            <h3>סיכום לפי סוג בירה</h3>
-            <div id="typeReport"></div>
-        </div>
-
-        <div class="card">
-            <h3>יומן פתיחות</h3>
-            <div style="overflow-x:auto;">
+            <button class="btn-toggle-log" onclick="toggleLogView()">📋 הצג / הסתר יומן פתיחות</button>
+            <div id="logContainer" class="hidden" style="margin-top: 15px; overflow-x:auto;">
                 <table class="report-table">
                     <thead>
                         <tr><th>תאריך ושעה</th><th>שם הבירה</th></tr>
@@ -176,34 +186,44 @@
 <script>
     const FIREBASE_URL = "https://beer-ff03f-default-rtdb.firebaseio.com";
 
-    // קובץ השמע המדויק שהעלית מקודד ב-Base64 מלא
-    const EXACT_USER_BEER_SOUND = "data:audio/mp3;base64,SUQ3BAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//5AwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAInfoAALvAAAAAAAAAAA3c3N3dzf3d/M3Mz39////7g/1///4f2aO6IqgP3o///389+oAABcBAAAB8AAH4P/8/3+eAgAD+B/P+f+//7/8/3//B4BA4A/4P+f8///2f/6n4I4Hg/3/P//4AAfgf/5/v/8/4PB//z/f//4BA4A/4P+f8///2f/6n4I4Hg/3/P//4AAfgf/5/v/8/4PB//z/f//4BA4A/4P+f8///2f/6n4I4Hg/3/P//4AAfgf/5/v/8/4PB//z/f//4BA4A/4P+f8///2f/6n4I4Hg/3/P//";
-
     let beers = [];
     let openLogs = [];
     let currentGroup = localStorage.getItem('beer_firebase_group') || '';
     let syncTimer = null;
+    let audioCtx = null;
 
-    const beerAudio = new Audio(EXACT_USER_BEER_SOUND);
-    let audioUnlocked = false;
-
-    // עוקף חסימות Autoplay בניידים
-    function unlockAudio() {
-        if (!audioUnlocked) {
-            beerAudio.play().then(() => {
-                beerAudio.pause();
-                beerAudio.currentTime = 0;
-                audioUnlocked = true;
-            }).catch(() => {});
-        }
-    }
-
-    function playPopSound() {
+    function playHornSound() {
         try {
-            beerAudio.currentTime = 0;
-            beerAudio.play().catch(e => console.log('Audio playback error:', e));
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+            const duration = 0.4;
+
+            const osc1 = audioCtx.createOscillator();
+            const osc2 = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc1.type = 'sawtooth';
+            osc2.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(349.23, now);
+            osc2.frequency.setValueAtTime(440.00, now);
+
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.3, now + duration - 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + duration);
+            osc2.stop(now + duration);
         } catch (e) {
-            console.error("Audio error:", e);
+            console.error(e);
         }
     }
 
@@ -253,7 +273,7 @@
                 showStatus(`🟢 מחובר ומסונכרן בלייב: <b>${currentGroup}</b>`);
             }
         } catch (e) {
-            console.error('Firebase Fetch Error:', e);
+            console.error(e);
             showStatus('⚠️ בדיקת חיבור לרשת...');
         }
     }
@@ -272,7 +292,7 @@
             });
             showStatus(`🟢 מסונכרן בלייב: <b>${currentGroup}</b>`);
         } catch (e) {
-            console.error('Firebase Save Error:', e);
+            console.error(e);
         }
     }
 
@@ -281,7 +301,17 @@
         document.getElementById('reportsView').classList.toggle('hidden', tab !== 'reports');
         document.getElementById('tabMainBtn').classList.toggle('active', tab === 'main');
         document.getElementById('tabReportBtn').classList.toggle('active', tab === 'reports');
-        if (tab === 'reports') generateReport();
+        if (tab === 'reports') {
+            // הגדרת תאריך היום כברירת מחדל בדוח היומי
+            if (!document.getElementById('reportDate').value) {
+                document.getElementById('reportDate').valueToDate = new Date();
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('reportDate').value = today;
+            }
+            generateDailyReport();
+            generatePeriodReport();
+            renderLogsTable();
+        }
     }
 
     async function addBeer() {
@@ -297,8 +327,7 @@
     }
 
     async function openBeer(id) {
-        unlockAudio();
-        playPopSound();
+        playHornSound();
 
         const beer = beers.find(b => b.id === id);
         if (beer && beer.stock > 0) {
@@ -357,7 +386,39 @@
         });
     }
 
-    function generateReport() {
+    // 1. הפקת דוח יומי לפי תאריך נבחר
+    function generateDailyReport() {
+        const selectedDateVal = document.getElementById('reportDate').value;
+        const resultsDiv = document.getElementById('dailyReportResults');
+
+        if (!selectedDateVal) {
+            resultsDiv.innerHTML = '<p style="color: var(--text-secondary);">אנא בחר תאריך</p>';
+            return;
+        }
+
+        const selectedDate = new Date(selectedDateVal).toDateString();
+        const dayLogs = openLogs.filter(l => new Date(l.timestamp).toDateString() === selectedDate);
+
+        if (dayLogs.length === 0) {
+            resultsDiv.innerHTML = '<p style="color: var(--text-secondary);">לא נפתחו בירות בתאריך זה</p>';
+            return;
+        }
+
+        const typeCounts = {};
+        dayLogs.forEach(l => {
+            typeCounts[l.beerName] = (typeCounts[l.beerName] || 0) + 1;
+        });
+
+        let html = `<h3 style="color: var(--success); margin-bottom:10px;">סה"כ נפתחו: ${dayLogs.length} בירות</h3><ul>`;
+        for (const [name, count] of Object.entries(typeCounts)) {
+            html += `<li><b>${name}:</b> ${count} יחידות</li>`;
+        }
+        html += '</ul>';
+        resultsDiv.innerHTML = html;
+    }
+
+    // 2. הפקת דוח תקופתי
+    function generatePeriodReport() {
         const period = document.getElementById('reportPeriod').value;
         const now = new Date();
         let minDate = new Date(0);
@@ -375,10 +436,21 @@
             typeHtml += `<li><b>${name}:</b> ${count} שנפתחו</li>`;
         }
         document.getElementById('typeReport').innerHTML = typeHtml + '</ul>';
+    }
 
+    // 3. פתיחה/סגירה של יומן הפתיחות
+    function toggleLogView() {
+        const container = document.getElementById('logContainer');
+        container.classList.toggle('hidden');
+        if (!container.classList.contains('hidden')) {
+            renderLogsTable();
+        }
+    }
+
+    function renderLogsTable() {
         const tableBody = document.getElementById('logTableBody');
         tableBody.innerHTML = '';
-        [...filtered].reverse().forEach(log => {
+        [...openLogs].reverse().forEach(log => {
             const d = new Date(log.timestamp);
             tableBody.innerHTML += `<tr><td>${d.toLocaleDateString('he-IL')} ${d.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</td><td><b>${log.beerName}</b></td></tr>`;
         });
